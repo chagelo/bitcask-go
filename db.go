@@ -126,6 +126,36 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 	return logRecord.Value, nil
 }
 
+func (db *DB) Delete(key []byte) error {
+	// 空的 key
+	if len(key) == 0 {
+		return ErrKeyIsEmpty
+	}
+	
+
+	// 先检查 key 是否存在，不存在直接返回，不直接返回的情况下后续会导致日志出现很多无效的不存在 key 的记录
+	if pos := db.index.Get(key); pos == nil {
+		return nil
+	}
+
+
+	// 构造 LogRecord，标识其是被删除的
+	logRecord := &data.LogRecord{Key: key, Type: data.LogRecordDeleted}
+
+	// 写入到数据文件中
+	_, err := db.appendLogRecord(logRecord)
+	if err != nil {
+		return nil
+	}
+
+	ok := db.index.Delete(key)
+	if !ok {
+		return ErrIndexUpdateFailed
+	}
+	return nil
+
+}
+
 // 向活跃文件写数据
 func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, error) {
 	db.mu.Lock()
