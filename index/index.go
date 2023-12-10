@@ -17,6 +17,9 @@ type Indexer interface {
 
 	// 根据 key 删除对应的索引位置信息
 	Delete(key []byte) bool
+
+	// 索引迭代器
+	Iterator(reverse bool) Iterator
 }
 
 type IndexType = int8
@@ -42,6 +45,7 @@ func NewIndexer(typ IndexType) Indexer {
 	}
 }
 
+// BTree 节点存储的内容
 type Item struct {
 	key []byte
 	pos *data.LogRecordPos
@@ -49,4 +53,38 @@ type Item struct {
 
 func (ai *Item) Less(bi btree.Item) bool {
 	return bytes.Compare(ai.key, bi.(*Item).key) == -1
+}
+
+
+// Iterator 通用索引迭代器
+type Iterator interface {
+	// Rewind 重新回到迭代器的起点，第一个数据
+	Rewind()
+
+	// Seek 根据传入的 key 查找到第一个大于（或小于）等于的目标 key，根据这个 key 开始遍历
+	Seek(key []byte)
+
+	// Next 跳转到下一个 key
+	Next()
+
+	// Valid 是否有效
+	Valid() bool
+
+	// Key 当前遍历位置的 key 的数据
+	Key() []byte
+
+	// Value 当前遍历位置的 value
+	Value() *data.LogRecordPos
+
+	// Close 关闭迭代器，释放对应的资源
+	Close()
+}
+
+
+// BTree 索引迭代器
+
+type btreeIterator struct {
+	currIndex int // 当前遍历的下标位置
+	reverse bool // 是否反向遍历
+	values []*Item // key+位置索引信息
 }

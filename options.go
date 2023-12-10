@@ -1,5 +1,7 @@
 package bitcask_go
 
+import "os"
+
 type Options struct {
 	// 数据库数据目录
 	DirPath string 
@@ -15,6 +17,15 @@ type Options struct {
 }
 
 
+// IteratorOptions 索引迭代器配置项
+type IteratorOptions struct {
+	// 遍历前缀为指定值的 Key，默认为空
+	Prefix []byte
+	// 是否反向遍历，默认 false 是正向
+	Reverse bool
+}
+
+
 type IndexerType = int8
 
 const (
@@ -24,3 +35,17 @@ const (
 	// ART 自适应基数树索引
 	ART
 )
+
+
+var DefaultOptions = Options {
+	DirPath: os.TempDir(),
+	DataFileSize: 256 * 1024 * 1024, // 256 MB
+	SyncWrites: false, 
+	IndexType: BTree,
+}
+
+
+var DefaultIteratorOptions = IteratorOptions {
+	Prefix: nil,
+	Reverse: false,
+}

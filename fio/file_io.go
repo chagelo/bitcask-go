@@ -39,3 +39,11 @@ func (fio *FileIO) Sync() error {
 func (fio *FileIO) Close() error {
 	return fio.fd.Close()
 }
+
+func (fio *FileIO) Size() (uint64, error) {
+	stat, err := fio.fd.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return uint64(stat.Size()), nil
+}

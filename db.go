@@ -4,6 +4,7 @@ import (
 	"bitcask-go/data"
 	"bitcask-go/index"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"sort"
@@ -100,30 +101,32 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 		return nil, ErrKeyNotFound
 	}
 
-	// 根据文件 id 找到对应的数据文件
-	var dataFile *data.DataFile
-	if db.activeFile.FileId == logRecordPos.Fid {
-		dataFile = db.activeFile
-	} else {
-		dataFile = db.olderFiles[logRecordPos.Fid]
-	}
+	// // 根据文件 id 找到对应的数据文件
+	// var dataFile *data.DataFile
+	// if db.activeFile.FileId == logRecordPos.Fid {
+	// 	dataFile = db.activeFile
+	// } else {
+	// 	dataFile = db.olderFiles[logRecordPos.Fid]
+	// }
 
-	// 数据文件为空
-	if dataFile == nil {
-		return nil, ErrDataFileNotFound
-	}
+	// // 数据文件为空
+	// if dataFile == nil {
+	// 	return nil, ErrDataFileNotFound
+	// }
 
-	// 根据偏移量读取文件
-	logRecord, _, err := dataFile.ReadLogRecord(logRecordPos.Offset)
-	if err != nil {
-		return nil, err
-	}
+	// // 根据偏移量读取文件
+	// logRecord, _, err := dataFile.ReadLogRecord(logRecordPos.Offset)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if logRecord.Type == data.LogRecordDeleted {
-		return nil, ErrKeyNotFound
-	}
-
-	return logRecord.Value, nil
+	// if logRecord.Type == data.LogRecordDeleted {
+	// 	return nil, ErrKeyNotFound
+	// }
+	
+	// 从数据文件中获取 value
+	return db.getValuesByPosition(logRecordPos)
+	// return logRecord.Value, nil
 }
 
 func (db *DB) Delete(key []byte) error {
@@ -154,6 +157,34 @@ func (db *DB) Delete(key []byte) error {
 	}
 	return nil
 
+}
+
+// 根据数据文件索引获取对应的 value
+func (db *DB) getValuesByPosition (logRecordPos *data.LogRecordPos) ([]byte, error) {
+	// 根据文件 id 找到对应的数据文件
+	var dataFile *data.DataFile
+	if db.activeFile.FileId == logRecordPos.Fid {
+		dataFile = db.activeFile
+	} else {
+		dataFile = db.olderFiles[logRecordPos.Fid]
+	}
+	
+	// 数据文件为空
+	if dataFile == nil {
+		return nil, ErrDataFileNotFound
+	}
+
+	// 根据数据偏移读取对应数据
+	logRecord, _, err := dataFile.ReadLogRecord(logRecordPos.Offset)
+	if err != nil {
+		return nil, err
+	}
+
+	if logRecord.Type == data.LogRecordDeleted {
+		return nil, ErrKeyNotFound
+	}
+
+	return logRecord.Value, nil
 }
 
 // 向活跃文件写数据
@@ -244,7 +275,7 @@ func (db *DB) loadDataFiles() error {
 
 	sort.Ints(fileIds)
 	db.fileIds = fileIds
-
+	fmt.Println(db.options.DirPath, "files Ids: ", fileIds)
 	// 遍历每个文件 id，打开对应的数据文件，找到 id 最大的，就是活跃文件
 	for i, fid := range fileIds {
 		dataFile, err := data.OpenDataFile(db.options.DirPath, uint32(fid))
