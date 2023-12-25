@@ -11,6 +11,7 @@ type LogRecordType = byte
 const (
 	LogRecordNormal LogRecordType = iota
 	LogRecordDeleted
+	LogRecordTxnFinished
 )
 
 // |--crc--|--type--|--keysize--|--valuesize--|--key--|--val--|
@@ -39,6 +40,12 @@ type logRecordHeader struct {
 type LogRecordPos struct {
 	Fid    uint32
 	Offset uint64
+}
+
+// TransactionRecord 暂存事务相关的数据
+type TransactionRecord struct {
+	Record *LogRecord
+	Pos    *LogRecordPos
 }
 
 // EncodeLogRecord 对 LogRecord 进行编码，返回字节数组及长度
@@ -91,7 +98,7 @@ func decodeLogRecordHeader(buf []byte) (*logRecordHeader, uint32) {
 	valueSize, n := binary.Uvarint(buf[index:])
 	header.valueSize = uint32(valueSize)
 	index += n
-	
+
 	return header, uint32(index)
 }
 

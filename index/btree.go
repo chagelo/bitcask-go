@@ -59,6 +59,10 @@ func (bt *BTree) Delete(key []byte) bool {
 	return oldItem != nil
 }
 
+func (bt *BTree) Size() int {
+	return bt.tree.Len()
+}
+
 func (bt *BTree) Iterator(reverse bool) Iterator {
 	if bt.tree == nil {
 		return nil
@@ -124,6 +128,9 @@ func (bti *btreeIterator) Valid() bool {
 
 // Key 当前遍历位置的 key 的数据
 func (bti *btreeIterator) Key() []byte {
+	if !bti.Valid() {
+		panic("iterator out of bound")
+	}
 	return bti.values[bti.currIndex].key
 }
 
