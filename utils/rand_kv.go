@@ -8,7 +8,7 @@ import (
 
 var (
 	randStr = rand.New(rand.NewSource(time.Now().Unix()))
-	letters = []byte("")
+	letters = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 )
 
 // GetTestKey 获取测试使用的 key
