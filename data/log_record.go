@@ -73,6 +73,7 @@ func EncodeLogRecord(logRecord *LogRecord) ([]byte, uint64) {
 	crc := crc32.ChecksumIEEE(encBytes[4:])
 	binary.LittleEndian.PutUint32(encBytes[:4], crc)
 
+	// debug crc
 	fmt.Printf("header length: %d, crc: %d\n", index, crc)
 
 	return encBytes, uint64(size)

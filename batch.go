@@ -7,7 +7,10 @@ import (
 	"sync/atomic"
 )
 
+// 对应于 db.seqNo 标识提交的 LogRecord 是不属于事务的
 const nonTransactionSeqNo uint64 = 0
+
+// 如果事务中某一条提交的数据的 key 就等于这个 txnFinKey 那么可能错误的判断为事务的结束
 var txnFinKey = []byte("txn-fin")
 
 // WriteBatch 原子批量写数据，保证原子性
@@ -24,7 +27,7 @@ func (db *DB) NewWriteBatch(opts WriteBatchOptions) *WriteBatch {
 		options:       opts,
 		mu:            new(sync.Mutex),
 		db:            db,
-		pendingWrites: make(map[string]*data.LogRecord)	,
+		pendingWrites: make(map[string]*data.LogRecord),
 	}
 }
 
@@ -85,8 +88,8 @@ func (wb *WriteBatch) Commmit() error {
 	// 获取当前最新的事务序列号
 	seqNo := atomic.AddUint64(&wb.db.seqNo, 1)
 
-
 	// 开始写数据到数据文件中
+	// 全部写完之后再更新内存索引
 	positions := make(map[string]*data.LogRecordPos)
 	for _, record := range wb.pendingWrites {
 		logRecordPos, err := wb.db.appendLogRecord(&data.LogRecord{
@@ -99,9 +102,12 @@ func (wb *WriteBatch) Commmit() error {
 		}
 		positions[string(record.Key)] = logRecordPos
 	}
-	// 写一条标识事务完成的数据
+	/*
+	 * 写一条标识事务完成的数据，这里是因为可能存在有些无效事务（事务原子性破坏了）
+	 * 在读取的时候看这个事务数据是不是有效的
+	 */
 	finishedRecord := &data.LogRecord{
-		Key: logRecordKeyWithSeq(txnFinKey, seqNo),
+		Key:  logRecordKeyWithSeq(txnFinKey, seqNo),
 		Type: data.LogRecordTxnFinished,
 	}
 
@@ -127,9 +133,8 @@ func (wb *WriteBatch) Commmit() error {
 		}
 	}
 
-
 	// 清空暂存数据，便于下一次事务 commit
-	wb.pendingWrites = make(map[string]*data.LogRecord])
+	wb.pendingWrites = make(map[string]*data.LogRecord)
 	return nil
 }
 
@@ -144,7 +149,6 @@ func logRecordKeyWithSeq(key []byte, seqNo uint64) []byte {
 
 	return encKey
 }
-
 
 // 解析 LogRecord 的 key，获取实际的 key 和事务号
 func parseLogRecordKey(key []byte) ([]byte, uint64) {

@@ -47,6 +47,7 @@ func TestDB_Iterator_Multi_Values(t *testing.T) {
 	opts := DefaultOptions
 	dir, _ := os.MkdirTemp("", "bitcask-go-iterator-3")
 	opts.DirPath = dir
+	t.Log(dir)
 	db, err := Open(opts)
 	defer destroyDB(db)
 	assert.Nil(t, err)
