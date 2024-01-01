@@ -41,8 +41,7 @@ func NewIndexer(typ IndexType) Indexer {
 	case Btree:
 		return NewBTree()
 	case ART:
-		// todo
-		return nil
+		return NewART()
 	default:
 		panic("unsupported index type")
 	}
@@ -83,11 +82,3 @@ type Iterator interface {
 	Close()
 }
 
-
-// BTree 索引迭代器
-
-type btreeIterator struct {
-	currIndex int // 当前遍历的下标位置
-	reverse bool // 是否反向遍历
-	values []*Item // key+位置索引信息
-}
