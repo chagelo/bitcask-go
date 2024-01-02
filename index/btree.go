@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"sort"
 	"sync"
-
 	"github.com/google/btree"
 )
 
@@ -63,6 +62,10 @@ func (bt *BTree) Size() int {
 	return bt.tree.Len()
 }
 
+func (bt *BTree) Close() error {
+	return nil
+}
+
 func (bt *BTree) Iterator(reverse bool) Iterator {
 	if bt.tree == nil {
 		return nil
@@ -70,6 +73,14 @@ func (bt *BTree) Iterator(reverse bool) Iterator {
 	bt.lock.RLock()
 	defer bt.lock.RUnlock()
 	return newBTreeIterator(bt.tree, reverse)
+}
+
+
+// BTree 索引迭代器
+type btreeIterator struct {
+	currIndex int // 当前遍历的下标位置
+	reverse bool // 是否反向遍历
+	values []*Item // key+位置索引信息
 }
 
 func newBTreeIterator(tree *btree.BTree, reverse bool) * btreeIterator{

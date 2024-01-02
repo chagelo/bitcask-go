@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 )
 
-// 对应于 db.seqNo 标识提交的 LogRecord 是不属于事务的
-const nonTransactionSeqNo uint64 = 0
+// 对应于 db.seqNum 标识提交的 LogRecord 是不属于事务的
+const nonTransactionSeqNum uint64 = 0
 
 // 如果事务中某一条提交的数据的 key 就等于这个 txnFinKey 那么可能错误的判断为事务的结束
 var txnFinKey = []byte("txn-fin")
@@ -23,6 +23,10 @@ type WriteBatch struct {
 
 // NewWriteBatch 初始化 WriteBatch
 func (db *DB) NewWriteBatch(opts WriteBatchOptions) *WriteBatch {
+	// 如果不是 b+ 树索引，存储事务序列号文件不存在，且不是第一次加载 db 就禁用 writebatch
+	if db.options.IndexType == BPlusTree && !db.seqNumFileExists && !db.isInitial{
+		panic("cannot use write batch, seq no file no exists")
+	}
 	return &WriteBatch{
 		options:       opts,
 		mu:            new(sync.Mutex),
@@ -86,14 +90,14 @@ func (wb *WriteBatch) Commmit() error {
 	defer wb.db.mu.Unlock()
 
 	// 获取当前最新的事务序列号
-	seqNo := atomic.AddUint64(&wb.db.seqNo, 1)
+	seqNum := atomic.AddUint64(&wb.db.seqNum, 1)
 
 	// 开始写数据到数据文件中
 	// 全部写完之后再更新内存索引
 	positions := make(map[string]*data.LogRecordPos)
 	for _, record := range wb.pendingWrites {
 		logRecordPos, err := wb.db.appendLogRecord(&data.LogRecord{
-			Key:   logRecordKeyWithSeq(record.Key, seqNo),
+			Key:   logRecordKeyWithSeq(record.Key, seqNum),
 			Value: record.Value,
 			Type:  record.Type,
 		})
@@ -107,7 +111,7 @@ func (wb *WriteBatch) Commmit() error {
 	 * 在读取的时候看这个事务数据是不是有效的
 	 */
 	finishedRecord := &data.LogRecord{
-		Key:  logRecordKeyWithSeq(txnFinKey, seqNo),
+		Key:  logRecordKeyWithSeq(txnFinKey, seqNum),
 		Type: data.LogRecordTxnFinished,
 	}
 

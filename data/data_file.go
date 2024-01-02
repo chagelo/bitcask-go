@@ -17,6 +17,7 @@ const (
 	DataFileNameSuffix    = ".data"
 	HintFileName          = "hint-index"
 	MergeFinishedFileName = "merge-finished"
+	SeqNumFileName         = "seq-num"
 )
 
 // DataFile 数据文件
@@ -38,8 +39,15 @@ func OpenHintFile(dirPath string) (*DataFile, error) {
 	return newDataFile(fileName, 0)
 }
 
+// OpenMergeFinishedFile 打开标识 merge 完成的文件
 func OpenMergeFinishedFile(dirPath string) (*DataFile, error) {
 	fileName := filepath.Join(dirPath, MergeFinishedFileName)
+	return newDataFile(fileName, 0)
+}
+
+// OpenSeqNumFile 打开存储事务序列号的文件
+func OpenSeqNumFile(dirPath string) (*DataFile, error) {
+	fileName := filepath.Join(dirPath, SeqNumFileName)
 	return newDataFile(fileName, 0)
 }
 
@@ -62,6 +70,10 @@ func newDataFile(fileName string, fileId uint32) (*DataFile, error) {
 	}, nil
 }
 
+
+// EncodeLogRecord 对 LogRecord 进行编码，返回字节数组及长度
+// | crc | type | keySize | valSize| key | val | 
+// | 4 | 1 | 变长（最大5）| 变长（最大5）| 变长 | 变长 |
 // ReadLogRecord 根据 offset 指定的位置读取 LogRecord
 func (df *DataFile) ReadLogRecord(offset uint64) (*LogRecord, uint64, error) {
 	fileSize, err := df.IoManager.Size()
@@ -130,8 +142,8 @@ func (df *DataFile) Write(buf []byte) error {
 
 // WriteHintRecord 写入索引信息到 hint 文件中
 func (df *DataFile) WriteHintRecord(key []byte, pos *LogRecordPos) error {
-	record := &LogRecord {
-		Key: key,
+	record := &LogRecord{
+		Key:   key,
 		Value: EncodeLogRecordPos(pos),
 	}
 	encRecord, _ := EncodeLogRecord(record)

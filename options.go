@@ -40,6 +40,10 @@ const (
 
 	// ART 自适应基数树索引
 	ART
+
+	// B+ 树索引，索引存储到磁盘上
+	BPlusTree
+
 )
 
 
