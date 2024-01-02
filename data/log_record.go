@@ -79,6 +79,10 @@ func EncodeLogRecord(logRecord *LogRecord) ([]byte, uint64) {
 	return encBytes, uint64(size)
 }
 
+/*
+ | pos.Fid | pos.Offset|
+ | 变长（4） | 变长（8） |
+*/
 // 对位置索引进行编码，LogRecordPos
 func EncodeLogRecordPos(pos *LogRecordPos) []byte {
 	buf := make([]byte, binary.MaxVarintLen32+binary.MaxVarintLen64)

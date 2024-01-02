@@ -53,6 +53,10 @@ func (art *AdapativeRadixTree) Size() int {
 	return size
 }
 
+func (art *AdapativeRadixTree) Close() error {
+	return nil
+}
+
 func (art *AdapativeRadixTree) Iterator(reverse bool) Iterator {
 	art.lock.Lock()
 	defer art.lock.Unlock()

@@ -83,7 +83,7 @@ func TestDB_WriteBatch2(t *testing.T) {
 	assert.Equal(t, ErrKeyNotFound, err)
 
 	// 检验序列号
-	assert.Equal(t, uint64(2), db.seqNo)
+	assert.Equal(t, uint64(2), db.seqNum)
 }
 
 // 原子性

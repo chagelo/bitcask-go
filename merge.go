@@ -21,22 +21,24 @@ func (db *DB) Merge() error {
 	if db.activeFile == nil {
 		return nil
 	}
+
 	db.mu.Lock()
 	// 如果 merge 正在进行中，则直接返回
 	if db.isMerging{
 		db.mu.Unlock()
 		return ErrMergeIsProgress
 	}
+
 	db.isMerging = true
 	defer func() {
 		db.isMerging = false
 	}()
 
-
 	// 持久化当前活跃文件
 	if err := db.activeFile.Sync(); err != nil {
 		return err
 	}
+
 	// 将当前活跃文件转换为旧的数据文件
 	db.olderFiles[db.activeFile.FileId] = db.activeFile
 	// 打开新的活跃文件
@@ -47,14 +49,12 @@ func (db *DB) Merge() error {
 	// 记录最近没有参与 merge 的文件 id
 	nonMergeFileId := db.activeFile.FileId
 
-
 	// 取出所有需要 merge 的文件
 	var mergeFiles []*data.DataFile
 	for _, file := range db.olderFiles {
 		mergeFiles = append(mergeFiles, file)
 	}
-	db.mu.Lock()
-
+	db.mu.Unlock()
 
 	// 待 merge 的文件从小到大进行排序，依次 merge
 	sort.Slice(mergeFiles, func(i, j int) bool {
@@ -109,7 +109,7 @@ func (db *DB) Merge() error {
 				logRecordPos.Fid == dataFile.FileId &&
 				logRecordPos.Offset == offset {
 					// 清楚事务标记
-					logRecord.Key = logRecordKeyWithSeq(realKey, nonTransactionSeqNo)
+					logRecord.Key = logRecordKeyWithSeq(realKey, nonTransactionSeqNum)
 					pos, err := mergeDB.appendLogRecord(logRecord)
 					if err != nil {
 						return err
@@ -187,6 +187,9 @@ func (db *DB) logMergeFiles() error  {
 	for _, entry := range dirEntries {
 		if entry.Name() == data.MergeFinishedFileName {
 			mergeFinished = true
+		}
+		if entry.Name() == data.SeqNumFileName {
+			continue
 		}
 		mergeFileNames = append(mergeFileNames, entry.Name())
 	}
