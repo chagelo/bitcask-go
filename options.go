@@ -12,8 +12,14 @@ type Options struct {
 	// 每次写数据是否持久化
 	SyncWrites bool
 
+	// 累计写到多少字节进行持久化
+	BytesPerSync uint
+
 	// 索引类型
 	IndexType IndexerType
+
+	// 启动时是否使用 mmap 加载数据
+	MMapAtStartup bool
 }
 
 
@@ -51,7 +57,9 @@ var DefaultOptions = Options {
 	DirPath: os.TempDir(),
 	DataFileSize: 256 * 1024 * 1024, // 256 MB
 	SyncWrites: false, 
+	BytesPerSync: 0,
 	IndexType: BTree,
+	MMapAtStartup: true,
 }
 
 

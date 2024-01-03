@@ -10,9 +10,9 @@ type FileIO struct {
 
 // NewFileIOManager 初始化标准系统文件
 
-func NewFileIOManager(filename string) (*FileIO, error) {
+func NewFileIOManager(fileName string) (*FileIO, error) {
 	fd, err := os.OpenFile(
-		filename,
+		fileName,
 		os.O_CREATE | os.O_RDWR | os.O_APPEND,
 		DataFilePerm,
 	)
