@@ -2,6 +2,7 @@ package bitcask_go
 
 import (
 	"bitcask-go/data"
+	"bitcask-go/utils"
 	"io"
 	"os"
 	"path"
@@ -11,7 +12,7 @@ import (
 )
 
 const (
-	mergeDirName = "-merge"
+	mergeDirName     = "-merge"
 	mergeFinishedKey = "merge.finished"
 )
 
@@ -24,9 +25,33 @@ func (db *DB) Merge() error {
 
 	db.mu.Lock()
 	// 如果 merge 正在进行中，则直接返回
-	if db.isMerging{
+	if db.isMerging {
 		db.mu.Unlock()
 		return ErrMergeIsProgress
+	}
+
+	// 查看可以 merge 的数据量是否达到了阈值
+	totalSize, err := utils.DirSize(db.options.DirPath)
+	if err != nil {
+		db.mu.Unlock()
+		return err
+	}
+
+	if float32(db.reclaimSize)/float32(totalSize) < db.options.DataFileMergeRatio {
+		db.mu.Unlock()
+		return ErrMergeRatioUnreached
+	}
+
+	// 查看剩余的空间容量是否可以容纳 merge 之后的数据量
+	availableDiskSize, err := utils.AvailableDiskSize()
+	if err != nil {
+		db.mu.Unlock()
+		return err
+	}
+
+	if uint64(totalSize-db.reclaimSize) >= availableDiskSize {
+		db.mu.Unlock()
+		return ErrNoEnoughSpaceForMerge
 	}
 
 	db.isMerging = true
@@ -69,7 +94,7 @@ func (db *DB) Merge() error {
 		}
 	}
 
-	// 新建一个 merge path 的目录 
+	// 新建一个 merge path 的目录
 	if err := os.MkdirAll(mergePath, os.ModePerm); err == nil {
 		return err
 	}
@@ -82,7 +107,7 @@ func (db *DB) Merge() error {
 
 	if err != nil {
 		return err
-	}	
+	}
 
 	// 打开 hint 文件存储索引
 	hintFile, err := data.OpenHintFile(mergePath)
@@ -101,30 +126,32 @@ func (db *DB) Merge() error {
 				}
 				return err
 			}
+
 			// 解析拿到实际的 key
 			realKey, _ := parseLogRecordKey(logRecord.Key)
 			logRecordPos := db.index.Get(realKey)
+
 			// 和内存中的索引位置（最新的）进行比较，如果有效则重写（说明就是最新的）
 			if logRecordPos != nil &&
 				logRecordPos.Fid == dataFile.FileId &&
 				logRecordPos.Offset == offset {
-					// 清楚事务标记
-					logRecord.Key = logRecordKeyWithSeq(realKey, nonTransactionSeqNum)
-					pos, err := mergeDB.appendLogRecord(logRecord)
-					if err != nil {
-						return err
-					}
 
-					// 将当前位置索引写到 Hint 文件中
-					if err := hintFile.WriteHintRecord(realKey, pos); err != nil {
-						return err
-					}
+				// 清除事务标记
+				logRecord.Key = logRecordKeyWithSeq(realKey, nonTransactionSeqNum)
+				pos, err := mergeDB.appendLogRecord(logRecord)
+				if err != nil {
+					return err
 				}
-				// 增加 offset
-				offset += size
+
+				// 将当前位置索引写到 Hint 文件中
+				if err := hintFile.WriteHintRecord(realKey, pos); err != nil {
+					return err
+				}
+			}
+			// 增加 offset
+			offset += size
 		}
 	}
-
 
 	// sync 保证持久化
 	if err := hintFile.Sync(); err != nil {
@@ -144,7 +171,7 @@ func (db *DB) Merge() error {
 	// 每次 merge 需要标识哪些历史文件已经 merge，哪些没有 merge，每次将这个东西写进
 	// 一个新的 MergeFinishedFile 里
 	mergeFinRecord := &data.LogRecord{
-		Key: []byte(mergeFinishedKey),
+		Key:   []byte(mergeFinishedKey),
 		Value: []byte(strconv.Itoa(int(nonMergeFileId))),
 	}
 	encRecord, _ := data.EncodeLogRecord(mergeFinRecord)
@@ -158,7 +185,6 @@ func (db *DB) Merge() error {
 	return nil
 }
 
-
 func (db *DB) getMergePath() string {
 	dir := path.Dir(path.Clean(db.options.DirPath))
 	base := path.Base(db.options.DirPath)
@@ -166,7 +192,7 @@ func (db *DB) getMergePath() string {
 }
 
 // 加载 merge 数据目录
-func (db *DB) logMergeFiles() error  {
+func (db *DB) logMergeFiles() error {
 	mergePath := db.getMergePath()
 	// merge 目录不存在的话直接返回
 	if _, err := os.Stat(mergePath); os.IsNotExist(err) {
@@ -188,9 +214,15 @@ func (db *DB) logMergeFiles() error  {
 		if entry.Name() == data.MergeFinishedFileName {
 			mergeFinished = true
 		}
+		
 		if entry.Name() == data.SeqNumFileName {
 			continue
 		}
+
+		if entry.Name() == fileLockName {
+			continue
+		}
+		
 		mergeFileNames = append(mergeFileNames, entry.Name())
 	}
 
@@ -214,7 +246,7 @@ func (db *DB) logMergeFiles() error  {
 			}
 		}
 	}
-	
+
 	// 将新的数据文件移动到数据目录中
 	for _, fileName := range mergeFileNames {
 		srcPath := filepath.Join(mergePath, fileName)

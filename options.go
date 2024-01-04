@@ -20,6 +20,9 @@ type Options struct {
 
 	// 启动时是否使用 mmap 加载数据
 	MMapAtStartup bool
+
+	// 数据文件合并的阈值
+	DataFileMergeRatio float32
 }
 
 
@@ -60,6 +63,7 @@ var DefaultOptions = Options {
 	BytesPerSync: 0,
 	IndexType: BTree,
 	MMapAtStartup: true,
+	DataFileMergeRatio: 0.5,
 }
 
 
