@@ -20,19 +20,14 @@ func TestBPlusTree_Put(t *testing.T) {
 
 	res1 := tree.Put([]byte("zxc"), &data.LogRecordPos{Fid: 0, Offset: 3})
 	assert.Nil(t, res1)
-	res2 := tree.Put([]byte("sd"), &data.LogRecordPos{Fid: 0, Offset: 3})
+	res2 := tree.Put([]byte("sd"), &data.LogRecordPos{Fid: 1, Offset: 4})
 	assert.Nil(t, res2)
-	res3 := tree.Put([]byte("1"), &data.LogRecordPos{Fid: 0, Offset: 3})
+	res3 := tree.Put([]byte("1"), &data.LogRecordPos{Fid: 2, Offset: 1})
 	assert.Nil(t, res3)
 
-	ok := tree.Put([]byte("zxc"), &data.LogRecordPos{Fid: 3, Offset: 883})
-	assert.Nil(t, ok)
-	res4 := tree.Get([]byte("zxc"))
-
-	t.Log(res4.Fid)
-	t.Log(res4.Offset)
-	// assert.Equal(t, uint32(123), res4.Fid)
-	// assert.Equal(t, int64(999), res4.Offset)
+	res4 := tree.Put([]byte("zxc"), &data.LogRecordPos{Fid: 3, Offset: 883})
+	assert.Equal(t, uint32(0), res4.Fid)
+	assert.Equal(t, uint64(3), res4.Offset)
 }
 
 func TestBPlusTree_Get(t *testing.T) {
@@ -46,15 +41,21 @@ func TestBPlusTree_Get(t *testing.T) {
 	pos := tree.Get([]byte("not exist"))
 	assert.Nil(t, pos)
 
-	tree.Put([]byte("aac"), &data.LogRecordPos{Fid: 0, Offset: 999})
-	pos1 := tree.Get([]byte("aac"))
+	res1 := tree.Put([]byte("123"), &data.LogRecordPos{Fid: 0, Offset: 1})
+	assert.Nil(t, res1)
+	res2 := tree.Put([]byte("465"), &data.LogRecordPos{Fid: 1, Offset: 2})
+	assert.Nil(t, res2)
+	res3 := tree.Put([]byte("12a"), &data.LogRecordPos{Fid: 2, Offset: 3})
+	assert.Nil(t, res3)
+
+	pos1 := tree.Get([]byte("465"))
 	assert.NotNil(t, pos1)
 
-	tree.Put([]byte("aac"), &data.LogRecordPos{Fid: 2, Offset: 1232})
-	pos2 := tree.Get([]byte("aac"))
+	tree.Put([]byte("465"), &data.LogRecordPos{Fid: 3, Offset: 7})
+	pos2 := tree.Get([]byte("465"))
 	assert.NotNil(t, pos2)
-	assert.Equal(t, uint32(2), pos2.Fid)
-	assert.Equal(t, uint64(1232), pos2.Offset)
+	assert.Equal(t, uint32(3), pos2.Fid)
+	assert.Equal(t, uint64(7), pos2.Offset)
 }
 
 func TestBPlusTree_Delete(t *testing.T) {
@@ -65,12 +66,15 @@ func TestBPlusTree_Delete(t *testing.T) {
 	}()
 	tree := NewBPlusTree(path, false)
 
-	ok1 := tree.Delete([]byte("not exist"))
+	res1, ok1 := tree.Delete([]byte("not exist"))
 	assert.False(t, ok1)
+	assert.Nil(t, res1)
 
 	tree.Put([]byte("123"), &data.LogRecordPos{Fid: 123, Offset: 999})
-	ok2 := tree.Delete([]byte("123"))
+	res2, ok2 := tree.Delete([]byte("123"))
 	assert.True(t, ok2)
+	assert.Equal(t, uint32(123), res2.Fid)
+	assert.Equal(t, uint64(999), res2.Offset)
 
 	pos1 := tree.Get([]byte("123"))
 	assert.Nil(t, pos1)
