@@ -14,12 +14,11 @@ func TestMMap_Read(t *testing.T) {
 
 	mmapIO, err := NewMMapIOManager(path)
 	assert.Nil(t, err)
-	
+
 	b1 := make([]byte, 10)
 	n1, err := mmapIO.Read(b1, 0)
 	assert.Equal(t, 0, n1)
 	assert.Equal(t, io.EOF, err)
-
 
 	fio, err := NewFileIOManager(path)
 	assert.Nil(t, err)

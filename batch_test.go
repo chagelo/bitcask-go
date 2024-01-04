@@ -1,11 +1,12 @@
 package bitcask_go
 
 import (
-	"bitcask-go/utils"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"bitcask-go/utils"
 )
 
 func TestDB_WriteBatch1(t *testing.T) {

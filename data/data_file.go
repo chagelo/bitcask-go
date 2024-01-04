@@ -1,12 +1,13 @@
 package data
 
 import (
-	"bitcask-go/fio"
 	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
 	"path/filepath"
+
+	"bitcask-go/fio"
 )
 
 var (
@@ -17,7 +18,7 @@ const (
 	DataFileNameSuffix    = ".data"
 	HintFileName          = "hint-index"
 	MergeFinishedFileName = "merge-finished"
-	SeqNumFileName         = "seq-num"
+	SeqNumFileName        = "seq-num"
 )
 
 // DataFile 数据文件
@@ -70,9 +71,8 @@ func newDataFile(fileName string, fileId uint32, ioType fio.FileIOType) (*DataFi
 	}, nil
 }
 
-
 // EncodeLogRecord 对 LogRecord 进行编码，返回字节数组及长度
-// | crc | type | keySize | valSize| key | val | 
+// | crc | type | keySize | valSize| key | val |
 // | 4 | 1 | 变长（最大5）| 变长（最大5）| 变长 | 变长 |
 // ReadLogRecord 根据 offset 指定的位置读取 LogRecord
 func (df *DataFile) ReadLogRecord(offset uint64) (*LogRecord, uint64, error) {

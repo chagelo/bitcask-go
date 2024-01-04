@@ -1,10 +1,11 @@
 package bitcask_go
 
 import (
-	"bitcask-go/data"
 	"encoding/binary"
 	"sync"
 	"sync/atomic"
+
+	"bitcask-go/data"
 )
 
 // 对应于 db.seqNum 标识提交的 LogRecord 是不属于事务的
@@ -24,7 +25,7 @@ type WriteBatch struct {
 // NewWriteBatch 初始化 WriteBatch
 func (db *DB) NewWriteBatch(opts WriteBatchOptions) *WriteBatch {
 	// 如果不是 b+ 树索引，存储事务序列号文件不存在，且不是第一次加载 db 就禁用 writebatch
-	if db.options.IndexType == BPlusTree && !db.seqNumFileExists && !db.isInitial{
+	if db.options.IndexType == BPlusTree && !db.seqNumFileExists && !db.isInitial {
 		panic("cannot use write batch, seq no file no exists")
 	}
 	return &WriteBatch{
@@ -136,7 +137,7 @@ func (wb *WriteBatch) Commmit() error {
 		if record.Type == data.LogRecordDeleted {
 			oldPos, _ = wb.db.index.Delete(record.Key)
 		}
-		
+
 		if oldPos != nil {
 			wb.db.reclaimSize += oldPos.Size
 		}

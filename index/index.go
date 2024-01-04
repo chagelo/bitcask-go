@@ -1,17 +1,18 @@
 package index
 
 import (
-	"bitcask-go/data"
 	"bytes"
 
 	"github.com/google/btree"
+
+	"bitcask-go/data"
 )
 
 // Indexer 索引接口，对于不同数据结构，实现这个接口即可
 type Indexer interface {
 	// Put 向索引中存储 key 对应的数据位置信息
 	Put(key []byte, pos *data.LogRecordPos) *data.LogRecordPos
-	
+
 	// 根据 key 取出对应的索引位置信息
 	Get(key []byte) *data.LogRecordPos
 
@@ -24,7 +25,6 @@ type Indexer interface {
 	// 索引中的数据量
 	Size() int
 
-
 	// 关闭索引
 	Close() error
 }
@@ -34,12 +34,12 @@ type IndexType = int8
 const (
 	// BTree 索引
 	Btree IndexType = iota + 1
-	
+
 	// ATR 自适应基数树索引
 	ART
-	
+
 	// BPTree B+ 树索引
-	BPTree 
+	BPTree
 )
 
 func NewIndexer(typ IndexType, dirPath string, sync bool) Indexer {
@@ -66,7 +66,6 @@ func (ai *Item) Less(bi btree.Item) bool {
 	return bytes.Compare(ai.key, bi.(*Item).key) == -1
 }
 
-
 // Iterator 通用索引迭代器
 type Iterator interface {
 	// Rewind 重新回到迭代器的起点，第一个数据
@@ -90,4 +89,3 @@ type Iterator interface {
 	// Close 关闭迭代器，释放对应的资源
 	Close()
 }
-

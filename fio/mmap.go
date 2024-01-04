@@ -1,8 +1,9 @@
 package fio
 
 import (
-	"golang.org/x/exp/mmap"
 	"os"
+
+	"golang.org/x/exp/mmap"
 )
 
 // MMap IO, 内存文件映射
@@ -10,12 +11,11 @@ type MMap struct {
 	readerAt *mmap.ReaderAt
 }
 
-
 // NewMMapIOManager 初始化 MMap IO
 func NewMMapIOManager(fileName string) (*MMap, error) {
 	_, err := os.OpenFile(
 		fileName,
-		os.O_CREATE | os.O_RDWR | os.O_APPEND,
+		os.O_CREATE|os.O_RDWR|os.O_APPEND,
 		DataFilePerm,
 	)
 	if err != nil {

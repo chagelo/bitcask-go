@@ -1,8 +1,9 @@
 package bitcask_go
 
 import (
-	"bitcask-go/index"
 	"bytes"
+
+	"bitcask-go/index"
 )
 
 type Iterator struct {

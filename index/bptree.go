@@ -1,16 +1,16 @@
 package index
 
 import (
-	"bitcask-go/data"
 	"path/filepath"
 
 	"go.etcd.io/bbolt"
+
+	"bitcask-go/data"
 )
 
 const bptreeIndexFileName = "bptree-index"
 
 var indexBucketname = []byte("bitcask-index")
-
 
 // B+ 树索引
 // 封装了 go.etcd.io/bbolt 库
@@ -28,7 +28,7 @@ func NewBPlusTree(dirPath string, syncWrites bool) *BPlusTree {
 	if err != nil {
 		panic("failed to open bptree")
 	}
-	
+
 	// 创建对应的 bucket
 	if err := bptree.Update(func(tx *bbolt.Tx) error {
 		tx.CreateBucketIfNotExists(indexBucketname)
@@ -93,7 +93,7 @@ func (bpt *BPlusTree) Delete(key []byte) (*data.LogRecordPos, bool) {
 }
 
 func (bpt *BPlusTree) Size() int {
-	var size int 
+	var size int
 	if err := bpt.tree.View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(indexBucketname)
 		size = bucket.Stats().KeyN
@@ -115,10 +115,10 @@ func (bpt *BPlusTree) Iterator(reverse bool) Iterator {
 
 // B+ 树迭代器
 type bptreeIterator struct {
-	tx *bbolt.Tx
-	cursor *bbolt.Cursor
-	reverse bool
-	currKey []byte
+	tx        *bbolt.Tx
+	cursor    *bbolt.Cursor
+	reverse   bool
+	currKey   []byte
 	currValue []byte
 }
 
@@ -129,8 +129,8 @@ func newBptreeIterator(tree *bbolt.DB, reverse bool) *bptreeIterator {
 	}
 
 	bpti := &bptreeIterator{
-		tx: tx,
-		cursor: tx.Bucket(indexBucketname).Cursor(),
+		tx:      tx,
+		cursor:  tx.Bucket(indexBucketname).Cursor(),
 		reverse: reverse,
 	}
 	bpti.Rewind()
@@ -166,7 +166,7 @@ func (bpti *bptreeIterator) Key() []byte {
 	return bpti.currKey
 }
 
-func (bpti *bptreeIterator) Value() *data.LogRecordPos{
+func (bpti *bptreeIterator) Value() *data.LogRecordPos {
 	return data.DecodeLogRecordPos(bpti.currValue)
 }
 

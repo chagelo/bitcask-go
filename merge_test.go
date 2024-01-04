@@ -1,11 +1,13 @@
 package bitcask_go
 
 import (
-	"bitcask-go/utils"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"bitcask-go/utils"
 )
 
 // 没有任何数据的情况下进行 merge

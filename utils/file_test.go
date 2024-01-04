@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
 func TestDirSize(t *testing.T) {
 	dir, _ := os.Getwd()
 	dirSize, err := DirSize(dir)

@@ -1,8 +1,10 @@
 package index
 
 import (
-	"bitcask-go/data"
 	"testing"
+
+	"bitcask-go/data"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,14 +22,13 @@ func TestBTree_Put(t *testing.T) {
 	assert.Equal(t, uint64(2), res3.Offset)
 }
 
-
 func TestBTree_Get(t *testing.T) {
 	bt := NewBTree()
 
 	res1 := bt.Put(nil, &data.LogRecordPos{Fid: 1, Offset: 100})
 	assert.Nil(t, res1)
 
-	pos1  := bt.Get(nil)
+	pos1 := bt.Get(nil)
 	assert.Equal(t, uint32(1), pos1.Fid)
 	assert.Equal(t, uint64(100), pos1.Offset)
 
@@ -36,7 +37,6 @@ func TestBTree_Get(t *testing.T) {
 	res3 := bt.Put([]byte("a"), &data.LogRecordPos{Fid: 1, Offset: 3})
 	assert.Equal(t, uint32(1), res3.Fid)
 	assert.Equal(t, uint64(2), res3.Offset)
-
 
 	pos2 := bt.Get([]byte("a"))
 	assert.Equal(t, uint32(1), pos2.Fid)

@@ -1,11 +1,13 @@
 package index
 
 import (
-	"bitcask-go/data"
 	"bytes"
 	"sort"
 	"sync"
+
 	"github.com/google/btree"
+
+	"bitcask-go/data"
 )
 
 // BTree 索引，封装了 google 的 btree 库
@@ -32,7 +34,8 @@ func (bt *BTree) Put(key []byte, pos *data.LogRecordPos) *data.LogRecordPos {
 	*/
 	oldItem := bt.tree.ReplaceOrInsert(it)
 	bt.lock.Unlock()
-	if (oldItem == nil) {
+
+	if oldItem == nil {
 		return nil
 	}
 
@@ -79,22 +82,21 @@ func (bt *BTree) Iterator(reverse bool) Iterator {
 	return newBTreeIterator(bt.tree, reverse)
 }
 
-
 // BTree 索引迭代器
 type btreeIterator struct {
-	currIndex int // 当前遍历的下标位置
-	reverse bool // 是否反向遍历
-	values []*Item // key+位置索引信息
+	currIndex int     // 当前遍历的下标位置
+	reverse   bool    // 是否反向遍历
+	values    []*Item // key+位置索引信息
 }
 
-func newBTreeIterator(tree *btree.BTree, reverse bool) * btreeIterator{
+func newBTreeIterator(tree *btree.BTree, reverse bool) *btreeIterator {
 	var idx int
 	// 潜在问题，可能导致内存突然膨胀
 	values := make([]*Item, tree.Len())
 
 	saveVaules := func(it btree.Item) bool {
 		values[idx] = it.(*Item)
-		idx ++
+		idx++
 		return true
 	}
 	if reverse {
@@ -105,8 +107,8 @@ func newBTreeIterator(tree *btree.BTree, reverse bool) * btreeIterator{
 
 	return &btreeIterator{
 		currIndex: 0,
-		reverse: reverse,
-		values: values,
+		reverse:   reverse,
+		values:    values,
 	}
 
 }
@@ -127,7 +129,6 @@ func (bti *btreeIterator) Seek(key []byte) {
 			return bytes.Compare(bti.values[i].key, key) >= 0
 		})
 	}
-
 
 }
 

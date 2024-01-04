@@ -1,11 +1,12 @@
 package data
 
 import (
-	"bitcask-go/fio"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"bitcask-go/fio"
 )
 
 func TestOpenDataFile(t *testing.T) {
@@ -76,7 +77,7 @@ func TestDataFile_ReadLogRecord(t *testing.T) {
 	err = dataFile.Write(res1)
 	assert.Nil(t, err)
 
-	readRec1, readSize1, err:= dataFile.ReadLogRecord(0)
+	readRec1, readSize1, err := dataFile.ReadLogRecord(0)
 	assert.Nil(t, err)
 	assert.Equal(t, rec1, readRec1)
 	assert.Equal(t, size1, readSize1)
@@ -98,9 +99,9 @@ func TestDataFile_ReadLogRecord(t *testing.T) {
 
 	// 被删除的数据在数据文件末尾
 	rec3 := &LogRecord{
-		Key: []byte("1"),
+		Key:   []byte("1"),
 		Value: []byte(""),
-		Type: LogRecordDeleted,
+		Type:  LogRecordDeleted,
 	}
 	res3, size3 := EncodeLogRecord(rec3)
 	err = dataFile.Write(res3)

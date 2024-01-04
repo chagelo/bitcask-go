@@ -1,14 +1,15 @@
 package bitcask_go
 
 import (
-	"bitcask-go/data"
-	"bitcask-go/utils"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
+
+	"bitcask-go/data"
+	"bitcask-go/utils"
 )
 
 const (
@@ -214,7 +215,7 @@ func (db *DB) logMergeFiles() error {
 		if entry.Name() == data.MergeFinishedFileName {
 			mergeFinished = true
 		}
-		
+
 		if entry.Name() == data.SeqNumFileName {
 			continue
 		}
@@ -222,7 +223,7 @@ func (db *DB) logMergeFiles() error {
 		if entry.Name() == fileLockName {
 			continue
 		}
-		
+
 		mergeFileNames = append(mergeFileNames, entry.Name())
 	}
 
