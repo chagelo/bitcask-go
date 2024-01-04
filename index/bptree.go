@@ -40,16 +40,21 @@ func NewBPlusTree(dirPath string, syncWrites bool) *BPlusTree {
 	return &BPlusTree{tree: bptree}
 }
 
-func (bpt *BPlusTree) Put(key []byte, pos *data.LogRecordPos) bool {
-	// var oldVal []byte
+func (bpt *BPlusTree) Put(key []byte, pos *data.LogRecordPos) *data.LogRecordPos {
+	var oldVal []byte
 	if err := bpt.tree.Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(indexBucketname)
-		// oldVal = bucket.Get(key)
+		oldVal = bucket.Get(key)
 		return bucket.Put(key, data.EncodeLogRecordPos(pos))
 	}); err != nil {
 		panic("failed to put value in bptree")
 	}
-	return true
+
+	if len(oldVal) == 0 {
+		return nil
+	}
+
+	return data.DecodeLogRecordPos(oldVal)
 }
 
 func (bpt *BPlusTree) Get(key []byte) *data.LogRecordPos {
@@ -64,10 +69,11 @@ func (bpt *BPlusTree) Get(key []byte) *data.LogRecordPos {
 	}); err != nil {
 		panic("failed to get value in bptree")
 	}
+
 	return pos
 }
 
-func (bpt *BPlusTree) Delete(key []byte) bool {
+func (bpt *BPlusTree) Delete(key []byte) (*data.LogRecordPos, bool) {
 	var oldVal []byte
 	if err := bpt.tree.Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(indexBucketname)
@@ -78,11 +84,12 @@ func (bpt *BPlusTree) Delete(key []byte) bool {
 	}); err != nil {
 		panic("failed to delete value in bptree")
 	}
+
 	if len(oldVal) == 0 {
-		return false
+		return nil, false
 	}
-	return true
-	// return data.DecodeLogRecordPos(oldVal), true
+
+	return data.DecodeLogRecordPos(oldVal), true
 }
 
 func (bpt *BPlusTree) Size() int {
@@ -94,6 +101,7 @@ func (bpt *BPlusTree) Size() int {
 	}); err != nil {
 		panic("failed to get size in bptree")
 	}
+
 	return size
 }
 
@@ -112,7 +120,6 @@ type bptreeIterator struct {
 	reverse bool
 	currKey []byte
 	currValue []byte
-	
 }
 
 func newBptreeIterator(tree *bbolt.DB, reverse bool) *bptreeIterator {
