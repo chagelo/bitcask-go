@@ -1,10 +1,12 @@
 package bitcask_go
 
 import (
-	"bitcask-go/utils"
 	"os"
 	"testing"
+
 	"github.com/stretchr/testify/assert"
+
+	"bitcask-go/utils"
 )
 
 // 测试完成之后销毁 DB 数据目录
@@ -30,14 +32,13 @@ func TestOpen(t *testing.T) {
 	assert.NotNil(t, db)
 }
 
-
 /*
-	1. 正常 put 一条数据
-	2. 重复 put key 相同的数据
-	3. key 为空
-	4. value 为空
-	5. 写到数据文件进行了转换
-	6. 重启后再 put 数据
+1. 正常 put 一条数据
+2. 重复 put key 相同的数据
+3. key 为空
+4. value 为空
+5. 写到数据文件进行了转换
+6. 重启后再 put 数据
 */
 func TestDB_Put(t *testing.T) {
 	opts := DefaultOptions
@@ -98,12 +99,12 @@ func TestDB_Put(t *testing.T) {
 }
 
 /*
-	1. 正常读取一个数据
-	2. 读取一个 key 不存在的数据
-	3. 值被重复 put 后在读取
-	4. 值被删除后再 get
-	5. 转换为了旧的数据文件，从旧的数据文件上获取 value
-	6. 重启后，前面写入的数据都能拿到
+1. 正常读取一个数据
+2. 读取一个 key 不存在的数据
+3. 值被重复 put 后在读取
+4. 值被删除后再 get
+5. 转换为了旧的数据文件，从旧的数据文件上获取 value
+6. 重启后，前面写入的数据都能拿到
 */
 func TestDB_Get(t *testing.T) {
 	opts := DefaultOptions
@@ -131,6 +132,7 @@ func TestDB_Get(t *testing.T) {
 	err = db.Put(utils.GetTestKey(22), utils.RandomValue(24))
 	assert.Nil(t, err)
 	err = db.Put(utils.GetTestKey(22), utils.RandomValue(24))
+	assert.Nil(t, err)
 	val3, err := db.Get(utils.GetTestKey(22))
 	assert.Nil(t, err)
 	assert.NotNil(t, val3)
@@ -160,6 +162,7 @@ func TestDB_Get(t *testing.T) {
 
 	// 重启数据库
 	db2, err := Open(opts)
+	assert.Nil(t, err)
 	val6, err := db2.Get(utils.GetTestKey(11))
 	assert.Nil(t, err)
 	assert.NotNil(t, val6)
@@ -175,13 +178,12 @@ func TestDB_Get(t *testing.T) {
 	assert.Equal(t, ErrKeyNotFound, err)
 }
 
-
 /*
-	1. 正常删除一个存在的 key
-	2. 删除一个不存在的 key
-	3. 删除一个空的 key
-	4. 值被删除之后再重新 put
-	5. 重启之后，再进行校验
+1. 正常删除一个存在的 key
+2. 删除一个不存在的 key
+3. 删除一个空的 key
+4. 值被删除之后再重新 put
+5. 重启之后，再进行校验
 */
 func TestDB_Delete(t *testing.T) {
 	opts := DefaultOptions
@@ -227,6 +229,7 @@ func TestDB_Delete(t *testing.T) {
 
 	// 重启数据库
 	db2, err := Open(opts)
+	assert.Nil(t, err)
 	_, err = db2.Get(utils.GetTestKey(11))
 	assert.Equal(t, ErrKeyNotFound, err)
 
@@ -372,31 +375,31 @@ func TestDB_FileLock(t *testing.T) {
 // 	assert.NotNil(t, stat)
 // }
 
-// func TestDB_Backup(t *testing.T) {
-// 	opts := DefaultOptions
-// 	dir, _ := os.MkdirTemp("", "bitcask-go-backup")
-// 	opts.DirPath = dir
-// 	db, err := Open(opts)
-// 	defer destroyDB(db)
-// 	assert.Nil(t, err)
-// 	assert.NotNil(t, db)
+func TestDB_Backup(t *testing.T) {
+	opts := DefaultOptions
+	dir, _ := os.MkdirTemp("", "bitcask-go-backup")
+	opts.DirPath = dir
+	db, err := Open(opts)
+	defer destroyDB(db)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
 
-// 	for i := 1; i < 1000000; i++ {
-// 		err := db.Put(utils.GetTestKey(i), utils.RandomValue(128))
-// 		assert.Nil(t, err)
-// 	}
+	for i := 1; i < 1000000; i++ {
+		err := db.Put(utils.GetTestKey(i), utils.RandomValue(128))
+		assert.Nil(t, err)
+	}
 
-// 	backupDir, _ := os.MkdirTemp("", "bitcask-go-backup-test")
-// 	err = db.Backup(backupDir)
-// 	assert.Nil(t, err)
+	backupDir, _ := os.MkdirTemp("", "bitcask-go-backup-test")
+	err = db.Backup(backupDir)
+	assert.Nil(t, err)
 
-// 	opts1 := DefaultOptions
-// 	opts1.DirPath = backupDir
-// 	db2, err := Open(opts1)
-// 	defer destroyDB(db2)
-// 	assert.Nil(t, err)
-// 	assert.NotNil(t, db2)
-// }
+	opts1 := DefaultOptions
+	opts1.DirPath = backupDir
+	db2, err := Open(opts1)
+	defer destroyDB(db2)
+	assert.Nil(t, err)
+	assert.NotNil(t, db2)
+}
 
 //func TestDB_OpenMMap(t *testing.T) {
 //	opts := DefaultOptions

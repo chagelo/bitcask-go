@@ -1,10 +1,6 @@
 package bitcask_go
 
 import (
-	"bitcask-go/data"
-	"bitcask-go/fio"
-	"bitcask-go/index"
-	"bitcask-go/utils"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +12,11 @@ import (
 	"sync"
 
 	"github.com/gofrs/flock"
+
+	"bitcask-go/data"
+	"bitcask-go/fio"
+	"bitcask-go/index"
+	"bitcask-go/utils"
 )
 
 const (
@@ -42,13 +43,12 @@ type DB struct {
 }
 
 // Stat 存储引擎统计信息
-type Stat struct{
-	KeyNum uint // key 的总数量
-	DataFileNum uint // 数据文件总量
+type Stat struct {
+	KeyNum          uint   // key 的总数量
+	DataFileNum     uint   // 数据文件总量
 	ReclaimableSize uint64 // 可以进行 merge 回收的数据量
-	DiskSize uint64 // 数据目录所占磁盘空间大小
+	DiskSize        uint64 // 数据目录所占磁盘空间大小
 }
-
 
 // Open 打开 bitcast 存储引擎实例
 func Open(options Options) (*DB, error) {
@@ -133,6 +133,11 @@ func Open(options Options) (*DB, error) {
 	}
 
 	// 重置 IO 类型，重置的原因是当前 mmap 的写和 sync 没有实现
+	if db.options.MMapAtStartup {
+		if err := db.resetIoType(); err != nil {
+			return nil, err
+		}
+	}
 
 	return db, nil
 }
@@ -213,11 +218,12 @@ func (db *DB) Delete(key []byte) error {
 	if !ok {
 		return ErrIndexUpdateFailed
 	}
+	
 	if oldPos != nil {
 		db.reclaimSize += oldPos.Size
 	}
-	return nil
 
+	return nil
 }
 
 func (db *DB) Close() error {
@@ -287,13 +293,20 @@ func (db *DB) Stat() *Stat {
 	}
 
 	return &Stat{
-		KeyNum: uint(db.index.Size()),
-		DataFileNum: dataFiles,
+		KeyNum:          uint(db.index.Size()),
+		DataFileNum:     dataFiles,
 		ReclaimableSize: db.reclaimSize,
-		DiskSize: dirSize, // TODO
+		DiskSize:        dirSize, // TODO
 	}
 }
- 
+
+// Backup 备份数据库，将数据库拷贝到新的目录中，旨在数据恢复
+func (db *DB) Backup(dir string) error {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+	return utils.CopyDir(db.options.DirPath, dir, []string{fileLockName})
+}
+
 // 持久化数据文件
 func (db *DB) Sync() error {
 	if db.activeFile == nil {
@@ -472,7 +485,7 @@ func (db *DB) loadDataFiles() error {
 
 	sort.Ints(fileIds)
 	db.fileIds = fileIds
-	fmt.Println(db.options.DirPath, "files Ids: ", fileIds)
+
 	// 遍历每个文件 id，打开对应的数据文件，找到 id 最大的，就是活跃文件
 	for i, fid := range fileIds {
 		ioType := fio.StandardFIO
@@ -617,7 +630,7 @@ func checkOptions(options Options) error {
 	if options.DataFileMergeRatio < 0 || options.DataFileMergeRatio > 1 {
 		return errors.New("invalid merge ratio, must between 0 and 1")
 	}
-	
+
 	return nil
 }
 
