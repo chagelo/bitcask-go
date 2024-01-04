@@ -4,6 +4,7 @@ import (
 	"bitcask-go/data"
 	"bitcask-go/fio"
 	"bitcask-go/index"
+	"bitcask-go/utils"
 	"errors"
 	"fmt"
 	"io"
@@ -36,7 +37,18 @@ type DB struct {
 	isInitial        bool                      // 是否第一次初始化此数据目录
 	fileLock         *flock.Flock              // 文件锁保证多线程之间的互斥
 	bytesWrite       uint                      // 累计写了多少个字节
+	reclaimSize      uint64                    // 标识有多少数据是无效的
+
 }
+
+// Stat 存储引擎统计信息
+type Stat struct{
+	KeyNum uint // key 的总数量
+	DataFileNum uint // 数据文件总量
+	ReclaimableSize uint64 // 可以进行 merge 回收的数据量
+	DiskSize uint64 // 数据目录所占磁盘空间大小
+}
+
 
 // Open 打开 bitcast 存储引擎实例
 func Open(options Options) (*DB, error) {
@@ -146,8 +158,8 @@ func (db *DB) Put(key []byte, value []byte) error {
 	}
 
 	// 更新内存索引
-	if ok := db.index.Put(key, pos); !ok {
-		return ErrIndexUpdateFailed
+	if oldPos := db.index.Put(key, pos); oldPos != nil {
+		db.reclaimSize += oldPos.Size
 	}
 	return nil
 }
@@ -191,14 +203,18 @@ func (db *DB) Delete(key []byte) error {
 	}
 
 	// 写入到数据文件中
-	_, err := db.appendLogRecordWithLock(logRecord)
+	pos, err := db.appendLogRecordWithLock(logRecord)
 	if err != nil {
 		return nil
 	}
+	db.reclaimSize += pos.Size
 
-	ok := db.index.Delete(key)
+	oldPos, ok := db.index.Delete(key)
 	if !ok {
 		return ErrIndexUpdateFailed
+	}
+	if oldPos != nil {
+		db.reclaimSize += oldPos.Size
 	}
 	return nil
 
@@ -255,6 +271,29 @@ func (db *DB) Close() error {
 	return nil
 }
 
+// Stat 返回数据库的相关统计信息
+func (db *DB) Stat() *Stat {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	var dataFiles = uint(len(db.olderFiles))
+	if db.activeFile != nil {
+		dataFiles += 1
+	}
+
+	dirSize, err := utils.DirSize(db.options.DirPath)
+	if err != nil {
+		panic(fmt.Sprintf("failed to get dir size: %v", err))
+	}
+
+	return &Stat{
+		KeyNum: uint(db.index.Size()),
+		DataFileNum: dataFiles,
+		ReclaimableSize: db.reclaimSize,
+		DiskSize: dirSize, // TODO
+	}
+}
+ 
 // 持久化数据文件
 func (db *DB) Sync() error {
 	if db.activeFile == nil {
@@ -387,7 +426,7 @@ func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, er
 	}
 
 	// 构造内存索引信息
-	pos := &data.LogRecordPos{Fid: db.activeFile.FileId, Offset: writeOff}
+	pos := &data.LogRecordPos{Fid: db.activeFile.FileId, Offset: writeOff, Size: size}
 	return pos, nil
 }
 
@@ -401,7 +440,7 @@ func (db *DB) setActiveDataFile() error {
 	}
 
 	// 打开新的数据文件
-	dataFile, err := data.OpenDataFile(db.options.DirPath, initialFileId)
+	dataFile, err := data.OpenDataFile(db.options.DirPath, initialFileId, fio.StandardFIO)
 	if err != nil {
 		return err
 	}
@@ -476,16 +515,19 @@ func (db *DB) loadIndexFromDataFiles() error {
 		nonMergeFileId = fid
 
 	}
+
 	updateIndex := func(key []byte, typ data.LogRecordType, pos *data.LogRecordPos) {
-		var ok bool
+		var oldPos *data.LogRecordPos
 		if typ == data.LogRecordDeleted {
-			ok = db.index.Delete(key)
+			oldPos, _ = db.index.Delete(key)
+			db.reclaimSize += pos.Size
 		} else {
-			ok = db.index.Put(key, pos)
+			oldPos = db.index.Put(key, pos)
 		}
 
-		if !ok {
-			panic("failed to update index at startup")
+		// TODO: correct? if oldPos != nil and type == deleted
+		if oldPos != nil {
+			db.reclaimSize += oldPos.Size
 		}
 	}
 
@@ -521,7 +563,7 @@ func (db *DB) loadIndexFromDataFiles() error {
 			}
 
 			// 构建内存索引并保存
-			logRecordPos := &data.LogRecordPos{Fid: fileId, Offset: offset}
+			logRecordPos := &data.LogRecordPos{Fid: fileId, Offset: offset, Size: size}
 
 			// 解析 key, 拿到事务号
 			realKey, seqNum := parseLogRecordKey(logRecord.Key)
@@ -571,6 +613,11 @@ func checkOptions(options Options) error {
 	if options.DataFileSize <= 0 {
 		return errors.New("database data file size must be greater than 0")
 	}
+
+	if options.DataFileMergeRatio < 0 || options.DataFileMergeRatio > 1 {
+		return errors.New("invalid merge ratio, must between 0 and 1")
+	}
+	
 	return nil
 }
 
@@ -606,7 +653,6 @@ func (db *DB) loadSeqNum() error {
 	return os.Remove(fileName)
 }
 
-
 func (db *DB) resetIoType() error {
 	if db.activeFile == nil {
 		return nil
@@ -617,7 +663,7 @@ func (db *DB) resetIoType() error {
 	}
 
 	for _, dataFile := range db.olderFiles {
-		if err := dataFile.SetIOManager(db.options.DirPath ,fio.StandardFIO); err != nil {
+		if err := dataFile.SetIOManager(db.options.DirPath, fio.StandardFIO); err != nil {
 			return err
 		}
 	}
