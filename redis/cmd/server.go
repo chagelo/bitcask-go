@@ -55,6 +55,6 @@ func main() {
 	bitcaskServer.dbs[0] = redisDataStructure
 
 	// 初始化一个 Redis 服务器
-	bitcaskServer.server = redcon.NewServer(addr, nil, bitcaskServer.accept, bitcaskServer.close)
+	bitcaskServer.server = redcon.NewServer(addr, execClientCommand, bitcaskServer.accept, bitcaskServer.close)
 	bitcaskServer.listen()
 }
