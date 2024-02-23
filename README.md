@@ -4,6 +4,21 @@
 
 # Usage
 
+## interface
+
+func|usage
+-|-
+DB.Get(k)| get value
+DB.Put(k, v)| put key value
+DB.Delete(k)| delete key value
+DB.Close()| close database engine
+DB.Stat()| get database engine info
+DB.Backup(dir)| backup database copy data to new directory
+DB.Sync()| sync datafile to disk
+DB.ListKeys()| list all keys
+DB.Fold(fn(k, v))|
+DB.Merge()|clear invalid data
+
 ## launch redis server
 
 ```bash

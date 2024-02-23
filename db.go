@@ -39,7 +39,6 @@ type DB struct {
 	fileLock         *flock.Flock              // 文件锁保证多线程之间的互斥
 	bytesWrite       uint                      // 累计写了多少个字节
 	reclaimSize      uint64                    // 标识有多少数据是无效的
-
 }
 
 // Stat 存储引擎统计信息
@@ -526,7 +525,6 @@ func (db *DB) loadIndexFromDataFiles() error {
 		}
 		hasMerge = true
 		nonMergeFileId = fid
-
 	}
 
 	updateIndex := func(key []byte, typ data.LogRecordType, pos *data.LogRecordPos) {
